@@ -1,3 +1,9 @@
+ext {
+    jooqVersion = '3.8.6'
+}
+
+apply plugin: 'nu.studer.jooq'
+
 dependencies {
     compile project(':ontrack-database')
     compile project(':ontrack-repository')
@@ -8,4 +14,47 @@ dependencies {
     compile libraries.flyway
 
     testCompile project(':ontrack-it-utils')
+
+    jooqRuntime libraries.postgresql
+}
+
+jooq {
+    version = jooqVersion
+    ontrackJooq(sourceSets.main) {
+        jdbc {
+            driver = 'org.postgresql.Driver'
+            url = 'jdbc:postgresql://localhost:5432/ontrack'
+            user = 'ontrack'
+            password = 'ontrack'
+            schema = 'public'
+        }
+        generator {
+            name = 'org.jooq.util.DefaultGenerator'
+            strategy {
+                name = 'org.jooq.util.DefaultGeneratorStrategy'
+                // ...
+            }
+            database {
+                name = 'org.jooq.util.postgres.PostgresDatabase'
+                inputSchema = 'public'
+                // ...
+            }
+            generate {
+                relations = true
+                deprecated = false
+                records = true
+                immutablePojos = true
+                fluentSetters = true
+                // ...
+            }
+            target {
+                packageName = 'net.nemerosa.ontrack.repository.jooq'
+                // directory = ...
+            }
+        }
+    }
+}
+
+dependencies {
+    compile "org.jooq:jooq:${jooqVersion}"
 }
