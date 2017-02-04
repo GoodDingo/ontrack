@@ -9,6 +9,8 @@ include::appendix-roadmap.adoc[]
 
 include::appendix-certificates.adoc[]
 
+include::appendix-neo4j-export.adoc[]
+
 [[dsl-doc]]
 === DSL Reference
 

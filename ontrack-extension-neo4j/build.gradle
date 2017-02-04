@@ -1,0 +1,15 @@
+import net.nemerosa.ontrack.gradle.extension.OntrackExtensionPlugin
+
+description = "Export of Ontrack data to Neo4J."
+
+apply plugin: OntrackExtensionPlugin
+apply plugin: 'groovy'
+
+dependencies {
+    compile project(':ontrack-extension-support')
+
+    testCompile project(':ontrack-it-utils')
+    testCompile libraries.groovy
+    testRuntime project(':ontrack-service')
+    testRuntime project(':ontrack-repository-impl')
+}

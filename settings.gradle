@@ -26,6 +26,7 @@ include ':ontrack-acceptance'
 include ':ontrack-docs'
 
 // Core extensions
+// Add any new core extension to the runtime scope of `ontrack-ui`
 include ':ontrack-extension-artifactory'
 include ':ontrack-extension-general'
 include ':ontrack-extension-issues'
@@ -42,3 +43,4 @@ include ':ontrack-extension-ldap'
 include ':ontrack-extension-stale'
 include ':ontrack-extension-metrics-graphite'
 include ':ontrack-extension-metrics-influxdb'
+include ':ontrack-extension-neo4j'

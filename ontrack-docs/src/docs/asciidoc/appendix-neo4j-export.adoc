@@ -1,0 +1,8 @@
+[[appendix-neo4j-export]]
+=== Exporting to Neo4J
+
+While Ontrack https://github.com/nemerosa/ontrack/issues/282[v4] will use
+https://neo4j.com/[Neo4J] as back-end, it is already possible to export to
+complete Ontrack data as a set of CSV files suitable to be imported into this
+graph database using the
+https://neo4j.com/docs/operations-manual/current/tutorial/import-tool/[import tool].
