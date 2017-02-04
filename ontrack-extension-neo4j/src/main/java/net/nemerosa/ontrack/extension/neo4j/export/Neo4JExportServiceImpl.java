@@ -4,9 +4,7 @@ import net.nemerosa.ontrack.extension.neo4j.Neo4JConfigProperties;
 import net.nemerosa.ontrack.extension.neo4j.Neo4JConstants;
 import net.nemerosa.ontrack.model.security.ApplicationManagement;
 import net.nemerosa.ontrack.model.security.SecurityService;
-import net.nemerosa.ontrack.model.structure.Entity;
-import net.nemerosa.ontrack.model.structure.Project;
-import net.nemerosa.ontrack.model.structure.StructureService;
+import net.nemerosa.ontrack.model.structure.*;
 import net.nemerosa.ontrack.model.support.EnvService;
 import org.apache.commons.lang3.StringEscapeUtils;
 import org.slf4j.Logger;
@@ -15,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.*;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -96,9 +95,23 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                 structureService.getProjectList(),
                 asList(
                         column("projectId:ID", Entity::id),
-                        column("name", Project::getName)
+                        column("name", Project::getName),
+                        column("description", Project::getDescription),
+                        column("disabled", Project::isDisabled),
+                        column("creator", this::getSignatureCreator),
+                        column("creation", this::getSignatureCreation)
                 )
         );
+    }
+
+    private LocalDateTime getSignatureCreation(ProjectEntity entity) {
+        Signature signature = entity.getSignature();
+        return signature != null ? signature.getTime() : null;
+    }
+
+    private String getSignatureCreator(ProjectEntity entity) {
+        Signature signature = entity.getSignature();
+        return signature != null ? signature.getUser().getName() : "";
     }
 
     private <T> void exportNodes(
