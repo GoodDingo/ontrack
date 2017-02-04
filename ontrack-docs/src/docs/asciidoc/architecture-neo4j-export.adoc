@@ -1,0 +1,16 @@
+[[architecture-neo4j-export]]
+==== Export to Neo4J
+
+The `neo4j` extension allows an administrator to
+<<appendix-neo4j-export,export>> the Ontrack to https://neo4j.com/[Neo4J].
+
+After having filled some input data, the data is exported asynchronously
+in a set of CSV files. When done, the whole set of files can be downloaded
+as a ZIP file.
+
+The diagram below shows the orchestration of the controller and the services.
+
+[plantuml,"architecture-neo4j-export",png]
+----
+include::architecture-neo4j-export.puml[]
+----

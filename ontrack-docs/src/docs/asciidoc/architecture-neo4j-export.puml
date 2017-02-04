@@ -1,0 +1,33 @@
+@startuml
+actor Admin
+control Neo4JExportController as Controller
+control Neo4JExportJob as Job
+control Neo4JExportService as Service
+participant TempDir
+
+== Exporting ==
+
+Admin -> Controller: export(input)
+Controller -\ Service: export(input)
+note right
+    Asynchronous call
+end note
+create TempDir
+Service -> TempDir: creates a temporary directory
+Service -> Service: indexes TempDir (uuid)
+Service -> TempDir: adds CSV files
+Service --> Controller: output (uuid)
+Controller --> Admin: output (uuid)
+
+Admin -> Controller: Requests download (uuid)
+Controller -> Service: Download (uuid)
+Service --> Controller: ZIP archive
+Service -> TempDir: destroy
+Controller --> Admin: ZIP archive as attachment
+
+== Housekeeping ==
+
+Job -> Service: cleans temp directories which are not downloaded
+Service -> TempDir: destroy
+
+@enduml

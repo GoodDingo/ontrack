@@ -122,6 +122,8 @@ include::reference-services.adoc[]
 
 include::architecture-metrics.adoc[]
 
+include::architecture-neo4j-export.adoc[]
+
 [[artifacture-technology]]
 ==== Technology
 
