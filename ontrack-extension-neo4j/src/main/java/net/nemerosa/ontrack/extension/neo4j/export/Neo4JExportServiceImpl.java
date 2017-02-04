@@ -1,31 +1,29 @@
 package net.nemerosa.ontrack.extension.neo4j.export;
 
 import net.nemerosa.ontrack.extension.neo4j.Neo4JConfigProperties;
-import net.nemerosa.ontrack.extension.neo4j.Neo4JConstants;
 import net.nemerosa.ontrack.model.security.ApplicationManagement;
 import net.nemerosa.ontrack.model.security.SecurityService;
 import net.nemerosa.ontrack.model.structure.*;
 import net.nemerosa.ontrack.model.support.EnvService;
-import org.apache.commons.lang3.StringEscapeUtils;
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
+import static java.util.Collections.singletonList;
 import static net.nemerosa.ontrack.extension.neo4j.export.Neo4JColumn.column;
 
 @Service
@@ -68,40 +66,45 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         String uuid = UUID.randomUUID().toString();
 
         // Export context
-        Neo4JExportContext exportContext = exportContextMap.computeIfAbsent(
+        try (Neo4JExportContext exportContext = exportContextMap.computeIfAbsent(
                 uuid,
                 this::createExportContext
-        );
+        )) {
 
-        // Project nodes
-        exportProjects(exportContext);
+            // Project nodes
+            exportProjects(exportContext);
 
-        // Branch nodes
-        exportBranches(exportContext);
+            // Branch nodes
+            exportBranches(exportContext);
 
-        // TODO Branch --> Project
+            // TODO Branch --> Project
 
-        // OK
-        return new Neo4JExportOutput(uuid);
+            // OK
+            return new Neo4JExportOutput(uuid);
+        }
     }
 
     private void exportBranches(Neo4JExportContext exportContext) throws FileNotFoundException, UnsupportedEncodingException {
         trace(exportContext, "Export of branches");
         exportNodes(
                 exportContext,
-                "Branch",
                 structureService.getProjectList().stream()
                         .flatMap(p -> structureService.getBranchesForProject(p.getId()).stream())
                         .collect(Collectors.toList()),
-                Entity::id,
                 asList(
-                        column("name", Branch::getName),
-                        column("description", Branch::getDescription),
-                        column("disabled:boolean", Branch::isDisabled),
-                        column("creator", this::getSignatureCreator),
-                        column("creation", this::getSignatureCreation)
-                        // TODO Branch type
-                        // TODO Branch link to template
+                        new NodeNeo4JExportChannel<>(
+                                "Branch",
+                                Entity::id,
+                                asList(
+                                        column("name", Branch::getName),
+                                        column("description", Branch::getDescription),
+                                        column("disabled:boolean", Branch::isDisabled),
+                                        column("creator", this::getSignatureCreator),
+                                        column("creation", this::getSignatureCreation)
+                                        // TODO Branch type
+                                        // TODO Branch link to template
+                                )
+                        )
                 )
         );
     }
@@ -110,15 +113,19 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         trace(exportContext, "Export of projects");
         exportNodes(
                 exportContext,
-                "Project",
                 structureService.getProjectList(),
-                Entity::id,
-                asList(
-                        column("name", Project::getName),
-                        column("description", Project::getDescription),
-                        column("disabled:boolean", Project::isDisabled),
-                        column("creator", this::getSignatureCreator),
-                        column("creation", this::getSignatureCreation)
+                singletonList(
+                        new NodeNeo4JExportChannel<>(
+                                "Project",
+                                Entity::id,
+                                asList(
+                                        column("name", Project::getName),
+                                        column("description", Project::getDescription),
+                                        column("disabled:boolean", Project::isDisabled),
+                                        column("creator", this::getSignatureCreator),
+                                        column("creation", this::getSignatureCreation)
+                                )
+                        )
                 )
         );
     }
@@ -135,50 +142,13 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
 
     private <T> void exportNodes(
             Neo4JExportContext exportContext,
-            String label,
             List<T> items,
-            Function<T, ?> idFn,
-            List<Neo4JColumn<T>> columns) throws FileNotFoundException, UnsupportedEncodingException {
-        List<Neo4JColumn<T>> actualColumns = new ArrayList<>(
-                columns
+            List<Neo4JExportChannel> channels) throws FileNotFoundException, UnsupportedEncodingException {
+        items.forEach(o ->
+                channels.forEach(channel ->
+                        channel.write(exportContext, o)
+                )
         );
-        // Adding the label to the list of columns
-        actualColumns.add(0, Neo4JColumn.column(":LABEL", o -> label));
-        // ID column
-        actualColumns.add(0, Neo4JColumn.column(
-                format("%sId:ID(%s)", StringUtils.uncapitalize(label), label),
-                idFn));
-        // File name
-        String file = label + ".csv";
-        // Output
-        try (PrintWriter writer = exportContext.write(file)) {
-            // Headers
-            writeCsvLine(writer, actualColumns.stream().map(Neo4JColumn::getHeader));
-            // Values
-            items.forEach(o ->
-                    writeCsvLine(
-                            writer,
-                            actualColumns.stream().map(c -> c.getMapping().apply(o))
-                    )
-            );
-        }
-    }
-
-    private void writeCsvLine(PrintWriter writer, Stream<?> content) {
-        writer.println(
-                content.map(this::formatCsvValue).collect(Collectors.joining(Neo4JConstants.CSV_DELIMITER))
-        );
-    }
-
-    private String formatCsvValue(Object o) {
-        if (o instanceof String) {
-            String text = (String) o;
-            return StringEscapeUtils.escapeCsv(text);
-        } else if (o == null) {
-            return "";
-        } else {
-            return String.valueOf(o);
-        }
     }
 
     private void trace(Neo4JExportContext exportContext, String message, Object... parameters) {
