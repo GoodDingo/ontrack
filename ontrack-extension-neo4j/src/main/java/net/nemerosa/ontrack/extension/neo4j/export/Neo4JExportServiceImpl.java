@@ -95,7 +95,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                 asList(
                         column("name", Branch::getName),
                         column("description", Branch::getDescription),
-                        column("disabled", Branch::isDisabled),
+                        column("disabled:boolean", Branch::isDisabled),
                         column("creator", this::getSignatureCreator),
                         column("creation", this::getSignatureCreation)
                         // TODO Branch type
@@ -114,7 +114,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                 asList(
                         column("name", Project::getName),
                         column("description", Project::getDescription),
-                        column("disabled", Project::isDisabled),
+                        column("disabled:boolean", Project::isDisabled),
                         column("creator", this::getSignatureCreator),
                         column("creation", this::getSignatureCreation)
                 )
