@@ -110,7 +110,13 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         try (PrintWriter writer = exportContext.write(file)) {
             // Headers
             writeCsvLine(writer, columns.stream().map(Neo4JColumn::getHeader));
-            // FIXME Values
+            // Values
+            items.forEach(o ->
+                    writeCsvLine(
+                            writer,
+                            columns.stream().map(c -> c.getMapping().apply(o))
+                    )
+            );
         }
     }
 
