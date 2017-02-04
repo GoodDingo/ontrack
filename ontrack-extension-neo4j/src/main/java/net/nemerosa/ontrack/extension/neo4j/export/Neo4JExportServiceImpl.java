@@ -9,12 +9,14 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -24,9 +26,11 @@ import java.util.stream.Collectors;
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
+import static net.nemerosa.ontrack.extension.neo4j.export.IDSpec.idSpec;
 import static net.nemerosa.ontrack.extension.neo4j.export.Neo4JColumn.column;
 
 @Service
+@Transactional(readOnly = true)
 public class Neo4JExportServiceImpl implements Neo4JExportService {
 
     private final Logger logger = LoggerFactory.getLogger(Neo4JExportService.class);
@@ -77,8 +81,6 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
             // Branch nodes
             exportBranches(exportContext);
 
-            // TODO Branch --> Project
-
             // OK
             return new Neo4JExportOutput(uuid);
         }
@@ -92,6 +94,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                         .flatMap(p -> structureService.getBranchesForProject(p.getId()).stream())
                         .collect(Collectors.toList()),
                 asList(
+                        // Branch node
                         new NodeNeo4JExportChannel<>(
                                 "Branch",
                                 Entity::id,
@@ -104,6 +107,13 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                                         // TODO Branch type
                                         // TODO Branch link to template
                                 )
+                        ),
+                        // Branch --> Project
+                        new RelNeo4JExportChannel<>(
+                                "BRANCH_OF",
+                                idSpec("Branch", Entity::id), // Branch + ID
+                                idSpec("Project", b -> b.getProject().id()), // Project + ID
+                                Collections.emptyList() // No data
                         )
                 )
         );
@@ -143,7 +153,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
     private <T> void exportNodes(
             Neo4JExportContext exportContext,
             List<T> items,
-            List<Neo4JExportChannel> channels) throws FileNotFoundException, UnsupportedEncodingException {
+            List<Neo4JExportChannel<T>> channels) throws FileNotFoundException, UnsupportedEncodingException {
         items.forEach(o ->
                 channels.forEach(channel ->
                         channel.write(exportContext, o)

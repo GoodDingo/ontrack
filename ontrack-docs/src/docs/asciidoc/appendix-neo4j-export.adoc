@@ -27,7 +27,8 @@ docker run \
       --into /export \
       --delimeter ',' \
       --nodes /import/nodes/Project.csv \
-      --nodes /import/nodes/Branch.csv
+      --nodes /import/nodes/Branch.csv \
+      --relationships /import/rel/BRANCH_OF.csv \
 ----
 
 WARNING: One cannot use `--nodes '/import/nodes/.*.csv'` because node `ID`s use ID spaces and files must be separated.
