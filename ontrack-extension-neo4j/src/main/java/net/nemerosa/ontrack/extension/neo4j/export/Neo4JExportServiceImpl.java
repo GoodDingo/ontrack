@@ -7,6 +7,7 @@ import net.nemerosa.ontrack.model.security.SecurityService;
 import net.nemerosa.ontrack.model.structure.*;
 import net.nemerosa.ontrack.model.support.EnvService;
 import org.apache.commons.lang3.StringEscapeUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,6 +24,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
+import static java.lang.String.format;
 import static java.util.Arrays.asList;
 import static net.nemerosa.ontrack.extension.neo4j.export.Neo4JColumn.column;
 
@@ -137,12 +139,15 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
             List<T> items,
             Function<T, ?> idFn,
             List<Neo4JColumn<T>> columns) throws FileNotFoundException, UnsupportedEncodingException {
-        // Adding the label & ID to the list of columns
         List<Neo4JColumn<T>> actualColumns = new ArrayList<>(
                 columns
         );
+        // Adding the label to the list of columns
         actualColumns.add(0, Neo4JColumn.column(":LABEL", o -> label));
-        actualColumns.add(0, Neo4JColumn.column(label + "Id:ID", o -> label + "-" + idFn.apply(o)));
+        // ID column
+        actualColumns.add(0, Neo4JColumn.column(
+                format("%sId:ID(%s)", StringUtils.uncapitalize(label), label),
+                idFn));
         // File name
         String file = label + ".csv";
         // Output
@@ -177,7 +182,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
     }
 
     private void trace(Neo4JExportContext exportContext, String message, Object... parameters) {
-        logger.debug("[neo4j][export][%s] %s", exportContext.getUuid(), String.format(message, parameters));
+        logger.debug("[neo4j][export][%s] %s", exportContext.getUuid(), format(message, parameters));
     }
 
     private Neo4JExportContext createExportContext(String id) {

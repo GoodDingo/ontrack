@@ -19,14 +19,18 @@ Neo4J database:
 [source,bash]
 ----
 docker run \
+   --rm \
    --volume $CSV:/import \
    --volume `pwd`/export:/export \
    neo4j:3.1.1 \
    bin/neo4j-import \
       --into /export \
       --delimeter ',' \
-      --nodes '/import/nodes/.*.csv'
+      --nodes /import/nodes/Project.csv \
+      --nodes /import/nodes/Branch.csv
 ----
+
+WARNING: One cannot use `--nodes '/import/nodes/.*.csv'` because node `ID`s use ID spaces and files must be separated.
 
 TODO Importing relationships
 
