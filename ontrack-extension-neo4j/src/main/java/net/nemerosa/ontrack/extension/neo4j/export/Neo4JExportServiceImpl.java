@@ -19,6 +19,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -90,8 +91,8 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                 structureService.getProjectList().stream()
                         .flatMap(p -> structureService.getBranchesForProject(p.getId()).stream())
                         .collect(Collectors.toList()),
+                Entity::id,
                 asList(
-                        column("branchId:ID", Entity::id),
                         column("name", Branch::getName),
                         column("description", Branch::getDescription),
                         column("disabled", Branch::isDisabled),
@@ -109,8 +110,8 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                 exportContext,
                 "Project",
                 structureService.getProjectList(),
+                Entity::id,
                 asList(
-                        column("projectId:ID", Entity::id),
                         column("name", Project::getName),
                         column("description", Project::getDescription),
                         column("disabled", Project::isDisabled),
@@ -134,12 +135,14 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
             Neo4JExportContext exportContext,
             String label,
             List<T> items,
+            Function<T, ?> idFn,
             List<Neo4JColumn<T>> columns) throws FileNotFoundException, UnsupportedEncodingException {
-        // Adding the label to the list of columns
+        // Adding the label & ID to the list of columns
         List<Neo4JColumn<T>> actualColumns = new ArrayList<>(
                 columns
         );
         actualColumns.add(0, Neo4JColumn.column(":LABEL", o -> label));
+        actualColumns.add(0, Neo4JColumn.column(label + "Id:ID", o -> label + "-" + idFn.apply(o)));
         // File name
         String file = label + ".csv";
         // Output

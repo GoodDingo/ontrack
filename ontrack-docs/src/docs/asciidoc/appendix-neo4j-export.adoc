@@ -6,3 +6,32 @@ https://neo4j.com/[Neo4J] as back-end, it is already possible to export to
 complete Ontrack data as a set of CSV files suitable to be imported into this
 graph database using the
 https://neo4j.com/docs/operations-manual/current/tutorial/import-tool/[import tool].
+
+TODO Exporting the data
+
+[[appendix-neo4j-export-convert]]
+==== Converting the data using a Docker container
+
+Considering that all files have been exported into a `$CSV` directory,
+you can run the following command to convert all the CSV files into a
+Neo4J database:
+
+[source,bash]
+----
+docker run \
+   --volume $CSV:/import \
+   --volume `pwd`/export:/export \
+   neo4j:3.1.1 \
+   bin/neo4j-import \
+      --into /export \
+      --delimeter ',' \
+      --nodes /import/nodes/Project.csv \
+      --nodes /import/nodes/Branch.csv
+----
+
+TODO Importing relationships
+
+[[appendix-neo4j-export-using]]
+==== Using the exported data
+
+TODO Using those files as a database
