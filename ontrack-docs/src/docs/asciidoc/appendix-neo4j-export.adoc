@@ -33,4 +33,19 @@ TODO Importing relationships
 [[appendix-neo4j-export-using]]
 ==== Using the exported data
 
-TODO Using those files as a database
+Assuming the converted files are available in the `$EXPORT` directory, you can move this directory as being
+the graph database itself at `<neo4j-home>/data/databases/graph.db`.
+
+Using Docker to launch the database, this would give:
+
+[source,bash]
+----
+mkdir -p data/databases
+mv $EXPORT data/databases/graph.db
+docker run --detach \
+    --publish=7474:7474 \
+    --publish=7687:7687 \
+    --name neo4j \
+    --volume `pwd`/data:/data \
+    neo4j:3.1.1
+----
