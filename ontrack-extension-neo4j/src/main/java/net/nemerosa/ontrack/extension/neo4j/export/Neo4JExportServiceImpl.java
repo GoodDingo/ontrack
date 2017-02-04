@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -85,7 +86,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         trace(exportContext, "Export of branches");
         exportNodes(
                 exportContext,
-                "Branches.csv",
+                "Branch",
                 structureService.getProjectList().stream()
                         .flatMap(p -> structureService.getBranchesForProject(p.getId()).stream())
                         .collect(Collectors.toList()),
@@ -106,7 +107,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         trace(exportContext, "Export of projects");
         exportNodes(
                 exportContext,
-                "Projects.csv",
+                "Project",
                 structureService.getProjectList(),
                 asList(
                         column("projectId:ID", Entity::id),
@@ -131,18 +132,25 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
 
     private <T> void exportNodes(
             Neo4JExportContext exportContext,
-            String file,
+            String label,
             List<T> items,
             List<Neo4JColumn<T>> columns) throws FileNotFoundException, UnsupportedEncodingException {
+        // Adding the label to the list of columns
+        List<Neo4JColumn<T>> actualColumns = new ArrayList<>(
+                columns
+        );
+        actualColumns.add(0, Neo4JColumn.column(":LABEL", o -> label));
+        // File name
+        String file = label + ".csv";
         // Output
         try (PrintWriter writer = exportContext.write(file)) {
             // Headers
-            writeCsvLine(writer, columns.stream().map(Neo4JColumn::getHeader));
+            writeCsvLine(writer, actualColumns.stream().map(Neo4JColumn::getHeader));
             // Values
             items.forEach(o ->
                     writeCsvLine(
                             writer,
-                            columns.stream().map(c -> c.getMapping().apply(o))
+                            actualColumns.stream().map(c -> c.getMapping().apply(o))
                     )
             );
         }
