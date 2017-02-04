@@ -81,17 +81,32 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         return new Neo4JExportOutput(uuid);
     }
 
-    private void exportBranches(Neo4JExportContext exportContext) {
+    private void exportBranches(Neo4JExportContext exportContext) throws FileNotFoundException, UnsupportedEncodingException {
         trace(exportContext, "Export of branches");
-        // FIXME Method net.nemerosa.ontrack.extension.neo4j.export.Neo4JExportServiceImpl.exportBranches
-
+        exportNodes(
+                exportContext,
+                "Branches.csv",
+                structureService.getProjectList().stream()
+                        .flatMap(p -> structureService.getBranchesForProject(p.getId()).stream())
+                        .collect(Collectors.toList()),
+                asList(
+                        column("branchId:ID", Entity::id),
+                        column("name", Branch::getName),
+                        column("description", Branch::getDescription),
+                        column("disabled", Branch::isDisabled),
+                        column("creator", this::getSignatureCreator),
+                        column("creation", this::getSignatureCreation)
+                        // TODO Branch type
+                        // TODO Branch link to template
+                )
+        );
     }
 
     private void exportProjects(Neo4JExportContext exportContext) throws FileNotFoundException, UnsupportedEncodingException {
         trace(exportContext, "Export of projects");
         exportNodes(
                 exportContext,
-                "projects.csv",
+                "Projects.csv",
                 structureService.getProjectList(),
                 asList(
                         column("projectId:ID", Entity::id),
