@@ -8,4 +8,29 @@
             <span ng-show="exportLaunched">Exporting...</span>
         </button>
     </form>
+    <div class="row" ng-show="exportOutput">
+        <div class="col-md-12">
+            <div class="well">
+                <p>
+                    Your export is finished. You can download the ZIP containing all the CSV files
+                    by clicking on the button below.
+                </p>
+                <p>
+                    <button class="btn btn-primary" type="button">
+                        <span class="fa fa-download"></span>
+                        <span>Download</span>
+                    </button>
+                </p>
+                <p>
+                    Once the ZIP has been downloaded in the <code>$DIR</code> directory, you can run
+                    the following commands:
+                </p>
+                <pre>
+                    cd $DIR
+                    unzip -d input neo4j.zip
+                    ...
+                </pre>
+            </div>
+        </div>
+    </div>
 </ot-view>
