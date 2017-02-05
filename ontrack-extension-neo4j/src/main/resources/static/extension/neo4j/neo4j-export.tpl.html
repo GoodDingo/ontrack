@@ -1,13 +1,17 @@
 <ot-view>
-    <form name="thisForm" class="form-horizontal" ng-submit="exportSubmit()" novalidate="novalidate">
-        <ot-form form="exportForm" data="exportData" form-root="thisForm"></ot-form>
-        <button class="btn btn-primary col-md-offset-3" type="submit" ng-disabled="exportLaunched">
-            <span class="fa fa-download" ng-hide="exportLaunched"></span>
-            <span class="ot-loading" ng-show="exportLaunched"></span>
-            <span ng-hide="exportLaunched">Export</span>
-            <span ng-show="exportLaunched">Exporting...</span>
-        </button>
-    </form>
+    <div class="row">
+        <div class="col-md-12">
+            <form name="thisForm" class="form-horizontal well" ng-submit="exportSubmit()" novalidate="novalidate">
+                <ot-form form="exportForm" data="exportData" form-root="thisForm"></ot-form>
+                <button class="btn btn-primary col-md-offset-3" type="submit" ng-disabled="exportLaunched">
+                    <span class="fa fa-download" ng-hide="exportLaunched"></span>
+                    <span class="ot-loading" ng-show="exportLaunched"></span>
+                    <span ng-hide="exportLaunched">Export</span>
+                    <span ng-show="exportLaunched">Exporting...</span>
+                </button>
+            </form>
+        </div>
+    </div>
     <div class="row" ng-show="exportOutput">
         <div class="col-md-12">
             <div class="well">
@@ -26,9 +30,9 @@
                     the following commands:
                 </p>
                 <pre>
-                    cd $DIR
-                    unzip -d input neo4j.zip
-                    ...
+cd $DIR
+unzip -d input neo4j.zip
+...
                 </pre>
             </div>
         </div>
