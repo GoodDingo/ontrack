@@ -34,7 +34,7 @@ public class RelNeo4JExportChannel<T> extends AbstractNeo4JExportChannel<T> {
     @Override
     public void write(Neo4JExportContext exportContext, T o) {
         // File name
-        String file = name + ".csv";
+        String file = "rel/" + name + ".csv";
         // Gets the writer
         PrintWriter writer = exportContext.getWriter(file, w -> writeCsvLine(w, columns.stream().map(Neo4JColumn::getHeader)));
         // Output

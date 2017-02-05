@@ -1,6 +1,7 @@
 package net.nemerosa.ontrack.extension.neo4j.export;
 
 import lombok.Data;
+import org.apache.commons.io.FileUtils;
 
 import java.io.*;
 import java.util.Map;
@@ -24,12 +25,14 @@ public class Neo4JExportContext implements Closeable {
 
     private PrintWriter createWriter(String file, Consumer<PrintWriter> initFn) {
         try {
-            PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(new File(dir, file)), "UTF-8"));
+            File f = new File(dir, file);
+            FileUtils.forceMkdirParent(f);
+            PrintWriter writer = new PrintWriter(new OutputStreamWriter(new FileOutputStream(f), "UTF-8"));
             if (initFn != null) {
                 initFn.accept(writer);
             }
             return writer;
-        } catch (UnsupportedEncodingException | FileNotFoundException e) {
+        } catch (IOException e) {
             throw new RuntimeException("Cannot create file", e);
         }
     }

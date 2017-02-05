@@ -33,7 +33,7 @@ public class NodeNeo4JExportChannel<T> extends AbstractNeo4JExportChannel<T> {
                 format("%sId:ID(%s)", StringUtils.uncapitalize(label), label),
                 idFn));
         // File name
-        String file = label + ".csv";
+        String file = "node/" + label + ".csv";
         // Gets the writer
         PrintWriter writer = exportContext.getWriter(file, w -> writeCsvLine(w, actualColumns.stream().map(Neo4JColumn::getHeader)));
         // Output
