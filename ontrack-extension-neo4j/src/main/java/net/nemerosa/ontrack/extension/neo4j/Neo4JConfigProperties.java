@@ -10,11 +10,6 @@ import org.springframework.stereotype.Component;
 public class Neo4JConfigProperties {
 
     /**
-     * Maximum number of pending downloads
-     */
-    private int exportDownloadMaximum = 5;
-
-    /**
      * Retention period for a download (in minutes, -1 to keep them forever)
      */
     private int exportDownloadRetentionMinutes = 15;

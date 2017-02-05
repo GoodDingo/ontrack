@@ -4,7 +4,10 @@ import net.nemerosa.ontrack.extension.neo4j.Neo4JConfigProperties;
 import net.nemerosa.ontrack.model.security.ApplicationManagement;
 import net.nemerosa.ontrack.model.security.SecurityService;
 import net.nemerosa.ontrack.model.structure.*;
+import net.nemerosa.ontrack.model.support.ApplicationLogEntry;
+import net.nemerosa.ontrack.model.support.ApplicationLogService;
 import net.nemerosa.ontrack.model.support.EnvService;
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,15 +15,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.UnsupportedEncodingException;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -28,6 +28,8 @@ import static java.util.Arrays.asList;
 import static java.util.Collections.singletonList;
 import static net.nemerosa.ontrack.extension.neo4j.export.IDSpec.idSpec;
 import static net.nemerosa.ontrack.extension.neo4j.export.Neo4JColumn.column;
+
+// FIXME Cleanup job
 
 @Service
 @Transactional(readOnly = true)
@@ -39,54 +41,63 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
     private final EnvService envService;
     private final StructureService structureService;
     private final Neo4JConfigProperties configProperties;
+    private final ApplicationLogService applicationLogService;
 
     /**
-     * Download contexts
+     * Download context
      */
-    private final Map<String, Neo4JExportContext> exportContextMap = new ConcurrentHashMap<>();
+    private final AtomicReference<Neo4JExportContext> currentExportContext = new AtomicReference<>();
 
     @Autowired
-    public Neo4JExportServiceImpl(SecurityService securityService, EnvService envService, StructureService structureService, Neo4JConfigProperties configProperties) {
+    public Neo4JExportServiceImpl(SecurityService securityService, EnvService envService, StructureService structureService, Neo4JConfigProperties configProperties, ApplicationLogService applicationLogService) {
         this.securityService = securityService;
         this.envService = envService;
         this.structureService = structureService;
         this.configProperties = configProperties;
+        this.applicationLogService = applicationLogService;
     }
 
     @Override
-    public Neo4JExportOutput export(Neo4JExportInput input) throws IOException {
+    public Neo4JExportOutput export(Neo4JExportInput input) {
 
         // Checks authorizations
         securityService.checkGlobalFunction(ApplicationManagement.class);
 
-        // Checks the maximum number of downloads
-        synchronized (exportContextMap) {
-            if (exportContextMap.size() >= configProperties.getExportDownloadMaximum()) {
-                throw new IllegalStateException("Maximum number of concurrent exports has been reached.");
+        // Cleanup of previous context
+        Neo4JExportContext exportContext = currentExportContext.updateAndGet(ctx -> {
+            if (ctx != null) {
+                ctx.close();
+                File contextWorkingDir = getContextWorkingDir(ctx.getUuid());
+                try {
+                    FileUtils.forceDelete(contextWorkingDir);
+                } catch (IOException e) {
+                    applicationLogService.log(
+                            ApplicationLogEntry.error(
+                                    e,
+                                    NameDescription.nd("Neo4J Export Cleanup", "Cannot delete Neo4J export working directory"),
+                                    ""
+                            )
+                                    .withDetail("neo4j.export.uuid", ctx.getUuid())
+                                    .withDetail("neo4j.export.dir", contextWorkingDir.getAbsolutePath())
+                    );
+                }
             }
-        }
+            // New context
+            String uuid = UUID.randomUUID().toString();
+            return createExportContext(uuid);
+        });
 
-        // UUID for this export
-        String uuid = UUID.randomUUID().toString();
+        // Project nodes
+        exportProjects(exportContext);
 
-        // Export context
-        try (Neo4JExportContext exportContext = exportContextMap.computeIfAbsent(
-                uuid,
-                this::createExportContext
-        )) {
+        // Branch nodes
+        exportBranches(exportContext);
 
-            // Project nodes
-            exportProjects(exportContext);
-
-            // Branch nodes
-            exportBranches(exportContext);
-
-            // OK
-            return new Neo4JExportOutput(uuid);
-        }
+        // OK
+        return new Neo4JExportOutput(exportContext.getUuid());
     }
 
-    private void exportBranches(Neo4JExportContext exportContext) throws FileNotFoundException, UnsupportedEncodingException {
+    private void exportBranches(Neo4JExportContext exportContext) {
         trace(exportContext, "Export of branches");
         exportNodes(
                 exportContext,
@@ -119,7 +130,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         );
     }
 
-    private void exportProjects(Neo4JExportContext exportContext) throws FileNotFoundException, UnsupportedEncodingException {
+    private void exportProjects(Neo4JExportContext exportContext) {
         trace(exportContext, "Export of projects");
         exportNodes(
                 exportContext,
@@ -153,7 +164,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
     private <T> void exportNodes(
             Neo4JExportContext exportContext,
             List<T> items,
-            List<Neo4JExportChannel<T>> channels) throws FileNotFoundException, UnsupportedEncodingException {
+            List<Neo4JExportChannel<T>> channels) {
         items.forEach(o ->
                 channels.forEach(channel ->
                         channel.write(exportContext, o)
@@ -166,7 +177,11 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
     }
 
     private Neo4JExportContext createExportContext(String id) {
-        File dir = envService.getWorkingDir(configProperties.getExportDownloadPath(), id);
+        File dir = getContextWorkingDir(id);
         return new Neo4JExportContext(id, dir);
+    }
+
+    private File getContextWorkingDir(String id) {
+        return envService.getWorkingDir(configProperties.getExportDownloadPath(), id);
     }
 }
