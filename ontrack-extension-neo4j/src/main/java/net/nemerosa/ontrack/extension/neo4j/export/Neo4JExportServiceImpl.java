@@ -111,6 +111,8 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
 
     @Override
     public Document download(String uuid) {
+        // Checks authorizations
+        securityService.checkGlobalFunction(ApplicationManagement.class);
         // Gets the current download context
         Neo4JExportContext exportContext = currentExportContext.get();
         if (exportContext == null) {
