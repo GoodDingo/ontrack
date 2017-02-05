@@ -121,6 +121,8 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         if (!StringUtils.equals(exportContext.getUuid(), uuid)) {
             throw new Neo4JExportWrongDownloadException(uuid);
         }
+        // Close everything
+        exportContext.close();
         // Gets the list of paths
         List<String> paths = exportContext.getPaths();
         // Zips the directory
