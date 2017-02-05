@@ -20,6 +20,14 @@ class Neo4JExportTest extends AbstractServiceTestSupport {
         def branch = doCreateBranch()
         // Exporting
         def output = asAdmin().call { exportService.export(new Neo4JExportInput()) }
+        // Checks the paths
+        assert output.nodeFiles as Set == [
+                'node/Project.csv',
+                'node/Branch.csv',
+        ] as Set
+        assert output.relFiles as Set == [
+                'rel/BRANCH_OF.csv',
+        ] as Set
         // Downloading
         def document = asAdmin().call { exportService.download(output.uuid) }
         assert document.type == 'application/zip'

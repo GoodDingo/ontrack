@@ -78,11 +78,8 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
             return createExportContext(uuid);
         });
 
-        // Project nodes
-        exportProjects(exportContext);
-
-        // Branch nodes
-        exportBranches(exportContext);
+        // Launching the export
+        securityService.asAdmin(() -> exportProjects(exportContext));
 
         // Gets list of paths
         List<String> paths = exportContext.getPaths();
@@ -155,13 +152,35 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         );
     }
 
-    private void exportBranches(Neo4JExportContext exportContext) {
-        trace(exportContext, "Export of branches");
+    private void exportProjects(Neo4JExportContext exportContext) {
+        trace(exportContext, "Export of projects");
         exportNodes(
                 exportContext,
-                structureService.getProjectList().stream()
-                        .flatMap(p -> structureService.getBranchesForProject(p.getId()).stream())
-                        .collect(Collectors.toList()),
+                structureService.getProjectList(),
+                singletonList(
+                        new NodeNeo4JExportChannel<>(
+                                "Project",
+                                Entity::id,
+                                asList(
+                                        column("name", Project::getName),
+                                        column("description", Project::getDescription),
+                                        column("disabled:boolean", Project::isDisabled),
+                                        column("creator", this::getSignatureCreator),
+                                        column("creation", this::getSignatureCreation)
+                                )
+                        )
+                ),
+                singletonList(
+                        this::exportBranches
+                )
+        );
+    }
+
+    private void exportBranches(Neo4JExportContext exportContext, Project project) {
+        trace(exportContext, "[project][%s] Branches", project.getName());
+        exportNodes(
+                exportContext,
+                structureService.getBranchesForProject(project.getId()),
                 asList(
                         // Branch node
                         new NodeNeo4JExportChannel<>(
@@ -184,28 +203,11 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                                 idSpec("Project", b -> b.getProject().id()), // Project + ID
                                 Collections.emptyList() // No data
                         )
-                )
-        );
-    }
-
-    private void exportProjects(Neo4JExportContext exportContext) {
-        trace(exportContext, "Export of projects");
-        exportNodes(
-                exportContext,
-                structureService.getProjectList(),
-                singletonList(
-                        new NodeNeo4JExportChannel<>(
-                                "Project",
-                                Entity::id,
-                                asList(
-                                        column("name", Project::getName),
-                                        column("description", Project::getDescription),
-                                        column("disabled:boolean", Project::isDisabled),
-                                        column("creator", this::getSignatureCreator),
-                                        column("creation", this::getSignatureCreation)
-                                )
-                        )
-                )
+                ),
+                // TODO Builds
+                // TODO Promotion levels
+                // TODO Validation stamps
+                Collections.emptyList()
         );
     }
 
@@ -222,12 +224,19 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
     private <T> void exportNodes(
             Neo4JExportContext exportContext,
             List<T> items,
-            List<Neo4JExportChannel<T>> channels) {
-        items.forEach(o ->
-                channels.forEach(channel ->
-                        channel.write(exportContext, o)
-                )
-        );
+            List<Neo4JExportChannel<T>> channels,
+            List<Neo4JExporter<T>> exporters
+    ) {
+        items.forEach(o -> {
+            channels.forEach(channel ->
+                    channel.write(exportContext, o)
+            );
+            if (exporters != null) {
+                exporters.forEach(exporter ->
+                        exporter.export(exportContext, o)
+                );
+            }
+        });
     }
 
     private void trace(Neo4JExportContext exportContext, String message, Object... parameters) {
