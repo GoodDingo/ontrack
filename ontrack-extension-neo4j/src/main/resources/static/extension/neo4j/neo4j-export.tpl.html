@@ -49,9 +49,7 @@ docker run \
    bin/neo4j-import \
       --into /output \
       --delimeter ',' \
-      --nodes /import/nodes/Project.csv \
-      --nodes /import/nodes/Branch.csv \
-      --relationships /import/rel/BRANCH_OF.csv
+{{getNodeOptions(exportOutput)}}{{getRelOptions(exportOutput)}}
                 </pre>
                 <p>
                     Finally, for example, you can run Neo4J as a local container using the
@@ -67,6 +65,10 @@ docker run --detach \
     --volume `pwd`/data:/data \
     neo4j:3.1.1
                 </pre>
+                <p>
+                    After a few seconds, the Neo4J Ontrack database is available at
+                    <a target="_blank" href="http://localhost:7474">http://localhost:7474</a>
+                </p>
             </div>
         </div>
     </div>

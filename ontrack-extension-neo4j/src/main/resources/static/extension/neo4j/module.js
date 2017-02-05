@@ -37,5 +37,21 @@ angular.module('ontrack.extension.neo4j', [
                 $scope.exportLaunched = false;
             });
         };
+        // Node options
+        $scope.getNodeOptions = function (output) {
+            var s = "";
+            output.nodeFiles.forEach(function (nodeFile) {
+                s += "      --nodes /input/" + nodeFile + " \\\n";
+            });
+            return s;
+        };
+        // Relationship options
+        $scope.getRelOptions = function (output) {
+            var s = "";
+            output.relFiles.forEach(function (relFile) {
+                s += "      --relationships /input/" + relFile + " \\\n";
+            });
+            return s;
+        };
     })
 ;
