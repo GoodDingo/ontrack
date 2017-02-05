@@ -84,8 +84,17 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
         // Branch nodes
         exportBranches(exportContext);
 
+        // Gets list of paths
+        List<String> paths = exportContext.getPaths();
+
         // OK
-        return new Neo4JExportOutput(exportContext.getUuid());
+        return new Neo4JExportOutput(
+                exportContext.getUuid(),
+                // Nodes
+                paths.stream().filter(p -> StringUtils.startsWith(p, "node/")).collect(Collectors.toList()),
+                // Relationships
+                paths.stream().filter(p -> StringUtils.startsWith(p, "rel/")).collect(Collectors.toList())
+        );
     }
 
     private Neo4JExportContext closeContext(Neo4JExportContext ctx) {

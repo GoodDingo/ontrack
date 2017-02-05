@@ -27,12 +27,45 @@
                 </p>
                 <p>
                     Once the ZIP has been downloaded in the <code>$DIR</code> directory, you can run
-                    the following commands:
+                    the following commands.
+                </p>
+                <p>
+                    First, unzip the ZIP into a local <code>input</code> directory:
                 </p>
                 <pre>
 cd $DIR
 unzip -d input neo4j.zip
-...
+                </pre>
+                <p>
+                    Second, convert the CSV files into a Neo4J static database, in the local
+                    <code>output</code> directory:
+                </p>
+                <pre>
+docker run \
+   --rm \
+   --volume `pwd`/input:/input \
+   --volume `pwd`/output:/output\
+   neo4j:3.1.1 \
+   bin/neo4j-import \
+      --into /output \
+      --delimeter ',' \
+      --nodes /import/nodes/Project.csv \
+      --nodes /import/nodes/Branch.csv \
+      --relationships /import/rel/BRANCH_OF.csv
+                </pre>
+                <p>
+                    Finally, for example, you can run Neo4J as a local container using the
+                    converted database:
+                </p>
+                <pre>
+mkdir -p data/databases
+mv output data/databases/graph.db
+docker run --detach \
+    --publish=7474:7474 \
+    --publish=7687:7687 \
+    --name neo4j \
+    --volume `pwd`/data:/data \
+    neo4j:3.1.1
                 </pre>
             </div>
         </div>
