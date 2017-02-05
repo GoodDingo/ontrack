@@ -162,7 +162,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
     }
 
     private void trace(Neo4JExportContext exportContext, String message, Object... parameters) {
-        logger.debug("[neo4j][export][%s] %s", exportContext.getUuid(), format(message, parameters));
+        logger.debug("[neo4j][export][{}] {}", exportContext.getUuid(), format(message, parameters));
     }
 
     private Neo4JExportContext createExportContext(String id) {

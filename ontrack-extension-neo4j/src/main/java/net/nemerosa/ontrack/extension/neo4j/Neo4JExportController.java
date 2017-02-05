@@ -42,7 +42,6 @@ public class Neo4JExportController extends AbstractResourceController {
      */
     @PostMapping
     public Callable<Neo4JExportOutput> launchExport(@RequestBody Neo4JExportInput input) {
-        // FIXME Async export
         // Launching export
         return () -> exportService.export(input);
     }

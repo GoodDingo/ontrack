@@ -25,5 +25,17 @@ angular.module('ontrack.extension.neo4j', [
             // Prepares the form for display
             $scope.exportData = otFormService.prepareForDisplay(form);
         });
+        // Exporting
+        $scope.exportSubmit = function () {
+            // Data to submit
+            var data = otFormService.prepareForSubmit($scope.exportForm, $scope.exportData);
+            // Submitting
+            $scope.exportLaunched = true;
+            ot.pageCall($http.post('extension/neo4j/export', data)).then(function (exportOutput) {
+                $scope.exportOutput = exportOutput;
+            }).finally(function () {
+                $scope.exportLaunched = false;
+            });
+        };
     })
 ;

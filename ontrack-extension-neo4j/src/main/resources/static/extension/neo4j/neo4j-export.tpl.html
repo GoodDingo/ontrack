@@ -1,9 +1,11 @@
 <ot-view>
-    <form name="thisForm" class="form-horizontal" ng-submit="exportSubmit(thisForm.$valid)" novalidate="novalidate">
+    <form name="thisForm" class="form-horizontal" ng-submit="exportSubmit()" novalidate="novalidate">
         <ot-form form="exportForm" data="exportData" form-root="thisForm"></ot-form>
-        <button class="btn btn-primary col-md-offset-3" type="submit">
-            <span class="fa fa-download"></span>
-            Export
+        <button class="btn btn-primary col-md-offset-3" type="submit" ng-disabled="exportLaunched">
+            <span class="fa fa-download" ng-hide="exportLaunched"></span>
+            <span class="ot-loading" ng-show="exportLaunched"></span>
+            <span ng-hide="exportLaunched">Export</span>
+            <span ng-show="exportLaunched">Exporting...</span>
         </button>
     </form>
 </ot-view>
