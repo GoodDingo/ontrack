@@ -4,9 +4,11 @@ import lombok.Data;
 import org.apache.commons.io.FileUtils;
 
 import java.io.*;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 @Data
 public class Neo4JExportContext implements Closeable {
@@ -42,4 +44,14 @@ public class Neo4JExportContext implements Closeable {
         writers.values().forEach(PrintWriter::close);
     }
 
+    public List<String> getPaths() {
+        return writers.keySet().stream()
+                .sorted()
+                .collect(Collectors.toList());
+    }
+
+    public InputStream open(String file) throws FileNotFoundException {
+        File f = new File(dir, file);
+        return new BufferedInputStream(new FileInputStream(f));
+    }
 }

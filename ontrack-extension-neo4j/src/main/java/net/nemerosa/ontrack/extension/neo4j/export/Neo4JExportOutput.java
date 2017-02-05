@@ -7,4 +7,6 @@ public class Neo4JExportOutput {
 
     private final String uuid;
 
+    // TODO List of paths (nodes + relationships)
+
 }

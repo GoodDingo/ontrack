@@ -20,7 +20,11 @@ class Neo4JExportTest extends AbstractServiceTestSupport {
         def branch = doCreateBranch()
         // Exporting
         def output = asAdmin().call { exportService.export(new Neo4JExportInput()) }
-        // TODO Downloading
+        // Downloading
+        def document = asAdmin().call { exportService.download(output.uuid) }
+        assert document.type == 'application/zip'
+        assert document.content.length > 0
+        // TODO Extract the zip
     }
 
 }

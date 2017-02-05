@@ -1,5 +1,6 @@
 package net.nemerosa.ontrack.extension.neo4j.export;
 
+import net.nemerosa.ontrack.common.Document;
 import net.nemerosa.ontrack.extension.neo4j.Neo4JConfigProperties;
 import net.nemerosa.ontrack.model.security.ApplicationManagement;
 import net.nemerosa.ontrack.model.security.SecurityService;
@@ -8,20 +9,26 @@ import net.nemerosa.ontrack.model.support.ApplicationLogEntry;
 import net.nemerosa.ontrack.model.support.ApplicationLogService;
 import net.nemerosa.ontrack.model.support.EnvService;
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
 
 import static java.lang.String.format;
 import static java.util.Arrays.asList;
@@ -65,23 +72,7 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
 
         // Cleanup of previous context
         Neo4JExportContext exportContext = currentExportContext.updateAndGet(ctx -> {
-            if (ctx != null) {
-                ctx.close();
-                File contextWorkingDir = getContextWorkingDir(ctx.getUuid());
-                try {
-                    FileUtils.forceDelete(contextWorkingDir);
-                } catch (IOException e) {
-                    applicationLogService.log(
-                            ApplicationLogEntry.error(
-                                    e,
-                                    NameDescription.nd("Neo4J Export Cleanup", "Cannot delete Neo4J export working directory"),
-                                    ""
-                            )
-                                    .withDetail("neo4j.export.uuid", ctx.getUuid())
-                                    .withDetail("neo4j.export.dir", contextWorkingDir.getAbsolutePath())
-                    );
-                }
-            }
+            closeContext(ctx);
             // New context
             String uuid = UUID.randomUUID().toString();
             return createExportContext(uuid);
@@ -95,6 +86,60 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
 
         // OK
         return new Neo4JExportOutput(exportContext.getUuid());
+    }
+
+    private Neo4JExportContext closeContext(Neo4JExportContext ctx) {
+        if (ctx != null) {
+            ctx.close();
+            File contextWorkingDir = getContextWorkingDir(ctx.getUuid());
+            try {
+                FileUtils.forceDelete(contextWorkingDir);
+            } catch (IOException e) {
+                applicationLogService.log(
+                        ApplicationLogEntry.error(
+                                e,
+                                NameDescription.nd("Neo4J Export Cleanup", "Cannot delete Neo4J export working directory"),
+                                ""
+                        )
+                                .withDetail("neo4j.export.uuid", ctx.getUuid())
+                                .withDetail("neo4j.export.dir", contextWorkingDir.getAbsolutePath())
+                );
+            }
+        }
+        return null;
+    }
+
+    @Override
+    public Document download(String uuid) {
+        // Gets the current download context
+        Neo4JExportContext exportContext = currentExportContext.get();
+        if (exportContext == null) {
+            throw new Neo4JExportNoDownloadException();
+        }
+        if (!StringUtils.equals(exportContext.getUuid(), uuid)) {
+            throw new Neo4JExportWrongDownloadException(uuid);
+        }
+        // Gets the list of paths
+        List<String> paths = exportContext.getPaths();
+        // Zips the directory
+        ByteArrayOutputStream bout = new ByteArrayOutputStream();
+        try (ZipOutputStream zout = new ZipOutputStream(bout)) {
+            for (String path : paths) {
+                zout.putNextEntry(new ZipEntry(path));
+                try (InputStream in = exportContext.open(path)) {
+                    IOUtils.copy(in, zout);
+                }
+            }
+        } catch (IOException ex) {
+            throw new Neo4JExportDownloadException(uuid, ex);
+        }
+        // Cleanup
+        currentExportContext.updateAndGet(this::closeContext);
+        // Returns the ZIP
+        return new Document(
+                "application/zip",
+                bout.toByteArray()
+        );
     }
 
     private void exportBranches(Neo4JExportContext exportContext) {
