@@ -2,9 +2,12 @@ package net.nemerosa.ontrack.extension.neo4j.export;
 
 import net.nemerosa.ontrack.common.Document;
 import net.nemerosa.ontrack.extension.neo4j.Neo4JConfigProperties;
+import net.nemerosa.ontrack.extension.neo4j.export.model.Neo4JExportModule;
+import net.nemerosa.ontrack.extension.neo4j.export.model.Neo4JExportRecordDef;
+import net.nemerosa.ontrack.extension.neo4j.export.model.Neo4JExportRecordExtractor;
 import net.nemerosa.ontrack.model.security.ApplicationManagement;
 import net.nemerosa.ontrack.model.security.SecurityService;
-import net.nemerosa.ontrack.model.structure.*;
+import net.nemerosa.ontrack.model.structure.NameDescription;
 import net.nemerosa.ontrack.model.support.ApplicationLogEntry;
 import net.nemerosa.ontrack.model.support.ApplicationLogService;
 import net.nemerosa.ontrack.model.support.EnvService;
@@ -21,20 +24,13 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.time.LocalDateTime;
-import java.util.Collections;
+import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
-
-import static java.lang.String.format;
-import static java.util.Arrays.asList;
-import static java.util.Collections.singletonList;
-import static net.nemerosa.ontrack.extension.neo4j.export.IDSpec.idSpec;
-import static net.nemerosa.ontrack.extension.neo4j.export.Neo4JColumn.column;
 
 // FIXME Cleanup job
 
@@ -44,9 +40,9 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
 
     private final Logger logger = LoggerFactory.getLogger(Neo4JExportService.class);
 
+    private final Collection<Neo4JExportModule> exportModules;
     private final SecurityService securityService;
     private final EnvService envService;
-    private final StructureService structureService;
     private final Neo4JConfigProperties configProperties;
     private final ApplicationLogService applicationLogService;
 
@@ -56,10 +52,15 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
     private final AtomicReference<Neo4JExportContext> currentExportContext = new AtomicReference<>();
 
     @Autowired
-    public Neo4JExportServiceImpl(SecurityService securityService, EnvService envService, StructureService structureService, Neo4JConfigProperties configProperties, ApplicationLogService applicationLogService) {
+    public Neo4JExportServiceImpl(Collection<Neo4JExportModule> exportModules,
+                                  SecurityService securityService,
+                                  EnvService envService,
+                                  Neo4JConfigProperties configProperties,
+                                  ApplicationLogService applicationLogService
+    ) {
+        this.exportModules = exportModules;
         this.securityService = securityService;
         this.envService = envService;
-        this.structureService = structureService;
         this.configProperties = configProperties;
         this.applicationLogService = applicationLogService;
     }
@@ -78,8 +79,21 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
             return createExportContext(uuid);
         });
 
+        // Initialisation of the context
+        exportModules.stream()
+                .flatMap(exportModule -> exportModule.getRecordExtractors().stream())
+                .flatMap(recordExtractor -> recordExtractor.getRecordDefs().stream())
+                .forEach(exportContext::init);
+
+        // Collecting all record extractors
+        List<Neo4JExportRecordExtractor<?>> recordDefs = securityService.asAdmin(() ->
+                exportModules.stream()
+                        .flatMap(exportModule -> exportModule.getRecordExtractors().stream())
+                        .collect(Collectors.toList())
+        );
+
         // Launching the export
-        securityService.asAdmin(() -> exportProjects(exportContext));
+        securityService.asAdmin(() -> export(exportContext, recordDefs));
 
         // Gets list of paths
         List<String> paths = exportContext.getPaths();
@@ -91,6 +105,31 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                 paths.stream().filter(p -> StringUtils.startsWith(p, "node/")).collect(Collectors.toList()),
                 // Relationships
                 paths.stream().filter(p -> StringUtils.startsWith(p, "rel/")).collect(Collectors.toList())
+        );
+    }
+
+    private void export(Neo4JExportContext exportContext, List<Neo4JExportRecordExtractor<?>> recordExtractors) {
+        recordExtractors.forEach(recordExtractor -> export(exportContext, recordExtractor));
+    }
+
+    private <T> void export(Neo4JExportContext exportContext, Neo4JExportRecordExtractor<T> recordExtractor) {
+        // Gets the list of items
+        recordExtractor.getCollectionSupplier().get().forEach(o ->
+                export(exportContext, recordExtractor, o)
+        );
+    }
+
+    private <T> void export(Neo4JExportContext exportContext, Neo4JExportRecordExtractor<T> recordExtractor, T o) {
+        recordExtractor.getRecordDefs().forEach(recordDef ->
+                export(exportContext, recordDef, o)
+        );
+    }
+
+    private <T> void export(Neo4JExportContext exportContext, Neo4JExportRecordDef<T> recordExtractor, T o) {
+        exportContext.writeRow(
+                recordExtractor.getName(),
+                recordExtractor.getColumns().stream()
+                        .map(c -> c.getValueFn().apply(o))
         );
     }
 
@@ -150,97 +189,6 @@ public class Neo4JExportServiceImpl implements Neo4JExportService {
                 "application/zip",
                 bout.toByteArray()
         );
-    }
-
-    private void exportProjects(Neo4JExportContext exportContext) {
-        trace(exportContext, "Export of projects");
-        exportNodes(
-                exportContext,
-                structureService.getProjectList(),
-                singletonList(
-                        new NodeNeo4JExportChannel<>(
-                                "Project",
-                                Entity::id,
-                                asList(
-                                        column("name", Project::getName),
-                                        column("description", Project::getDescription),
-                                        column("disabled:boolean", Project::isDisabled),
-                                        column("creator", this::getSignatureCreator),
-                                        column("creation", this::getSignatureCreation)
-                                )
-                        )
-                ),
-                singletonList(
-                        this::exportBranches
-                )
-        );
-    }
-
-    private void exportBranches(Neo4JExportContext exportContext, Project project) {
-        trace(exportContext, "[project][%s] Branches", project.getName());
-        exportNodes(
-                exportContext,
-                structureService.getBranchesForProject(project.getId()),
-                asList(
-                        // Branch node
-                        new NodeNeo4JExportChannel<>(
-                                "Branch",
-                                Entity::id,
-                                asList(
-                                        column("name", Branch::getName),
-                                        column("description", Branch::getDescription),
-                                        column("disabled:boolean", Branch::isDisabled),
-                                        column("creator", this::getSignatureCreator),
-                                        column("creation", this::getSignatureCreation)
-                                        // TODO Branch type
-                                        // TODO Branch link to template
-                                )
-                        ),
-                        // Branch --> Project
-                        new RelNeo4JExportChannel<>(
-                                "BRANCH_OF",
-                                idSpec("Branch", Entity::id), // Branch + ID
-                                idSpec("Project", b -> b.getProject().id()), // Project + ID
-                                Collections.emptyList() // No data
-                        )
-                ),
-                // TODO Builds
-                // TODO Promotion levels
-                // TODO Validation stamps
-                Collections.emptyList()
-        );
-    }
-
-    private LocalDateTime getSignatureCreation(ProjectEntity entity) {
-        Signature signature = entity.getSignature();
-        return signature != null ? signature.getTime() : null;
-    }
-
-    private String getSignatureCreator(ProjectEntity entity) {
-        Signature signature = entity.getSignature();
-        return signature != null ? signature.getUser().getName() : "";
-    }
-
-    private <T> void exportNodes(
-            Neo4JExportContext exportContext,
-            List<T> items,
-            List<Neo4JExportChannel<T>> channels,
-            List<Neo4JExporter<T>> exporters
-    ) {
-        items.forEach(o -> {
-            channels.forEach(channel ->
-                    channel.write(exportContext, o)
-            );
-            if (exporters != null) {
-                exporters.forEach(exporter ->
-                        exporter.export(exportContext, o)
-                );
-            }
-        });
-    }
-
-    private void trace(Neo4JExportContext exportContext, String message, Object... parameters) {
-        logger.debug("[neo4j][export][{}] {}", exportContext.getUuid(), format(message, parameters));
     }
 
     private Neo4JExportContext createExportContext(String id) {
