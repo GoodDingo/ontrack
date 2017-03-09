@@ -1,10 +1,7 @@
 package net.nemerosa.ontrack.extension.neo4j.export.core;
 
 import net.nemerosa.ontrack.extension.neo4j.export.model.Neo4JExportRecordDef;
-import net.nemerosa.ontrack.model.structure.Entity;
-import net.nemerosa.ontrack.model.structure.Project;
-import net.nemerosa.ontrack.model.structure.ProjectEntity;
-import net.nemerosa.ontrack.model.structure.Signature;
+import net.nemerosa.ontrack.model.structure.*;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -21,6 +18,20 @@ public class EntitiesNeo4JExportConfig {
                 .with("name", Project::getName)
                 .with("description", Project::getDescription)
                 .with("disabled:boolean", Project::isDisabled)
+                .with("creator", EntitiesNeo4JExportConfig::getSignatureCreator)
+                .with("creation", EntitiesNeo4JExportConfig::getSignatureCreation)
+                .build()
+                ;
+    }
+
+    @Bean
+    @Qualifier("Branch")
+    public Neo4JExportRecordDef<Branch> branchNode() {
+        return Neo4JExportRecordDef.<Branch>node("Branch", Entity::id)
+                .with("name", Branch::getName)
+                .with("description", Branch::getDescription)
+                .with("type", Branch::getType)
+                .with("disabled:boolean", Branch::isDisabled)
                 .with("creator", EntitiesNeo4JExportConfig::getSignatureCreator)
                 .with("creation", EntitiesNeo4JExportConfig::getSignatureCreation)
                 .build()
