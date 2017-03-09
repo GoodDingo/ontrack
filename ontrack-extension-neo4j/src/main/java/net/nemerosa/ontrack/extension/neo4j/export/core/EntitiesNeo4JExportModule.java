@@ -45,11 +45,16 @@ public class EntitiesNeo4JExportModule implements Neo4JExportModule {
                         )
                 ),
                 // Branches
-                new Neo4JExportRecordExtractor<Branch>(
+                new Neo4JExportRecordExtractor<>(
                         () -> structureService.getProjectList().stream()
                                 .flatMap(p -> structureService.getBranchesForProject(p.getId()).stream()),
                         Arrays.asList(
-                                branchNode
+                                branchNode,
+                                Neo4JExportRecordDef.rel(
+                                        "BRANCH_OF",
+                                        Neo4JExportRecordDef.nodeIdValueFn("Branch", Branch::id),
+                                        Neo4JExportRecordDef.nodeIdValueFn("Project", b -> b.getProject().id())
+                                ).build()
                         )
                 )
         );

@@ -16,10 +16,18 @@ public class Neo4JExportRecordDef<T> {
 
     public static <T> Neo4JExportRecordDefBuilder<T> node(String name, Function<T, Object> idFn) {
         return new Neo4JExportRecordDefBuilder<T>(Neo4JExportRecordType.NODE, name)
+                .with(":LABEL", o -> name)
                 .with(
                         nodeIdLabel(name),
                         nodeIdValueFn(name, idFn)
                 );
+    }
+
+    public static <T> Neo4JExportRecordDefBuilder<T> rel(String name, Function<T, Object> startFn, Function<T, Object> endFn) {
+        return new Neo4JExportRecordDefBuilder<T>(Neo4JExportRecordType.REL, name)
+                .with(":TYPE", o -> name)
+                .with(":START_ID", startFn)
+                .with(":END_ID", endFn);
     }
 
     public static <T> Function<T, Object> nodeIdValueFn(String name, Function<T, Object> idFn) {
