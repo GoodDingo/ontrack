@@ -194,7 +194,8 @@ osPackages
 build
 -Pdocumentation
 -PbowerOptions='--allow-root'
--Dorg.gradle.jvmargs=-Xmx1536m
+-Dorg.gradle.jvmargs=-Xmx2048m
+--parallel
 --info
 --stacktrace
 --profile
