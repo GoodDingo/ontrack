@@ -83,7 +83,7 @@ class OntrackExtensionPlugin implements Plugin<Project> {
                 println "[ontrack] Configure the NPM cache in ${project.npmCacheDir}"
             }
             args = [ 'config', 'set', 'cache', project.npmCacheDir ]
-            outputs.dir project.file(project.npmCacheDir)
+            outputs.files project.file(project.npmCacheDir)
         }
 
         project.tasks.create('copyPackageJson') {
