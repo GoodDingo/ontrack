@@ -214,7 +214,7 @@ ontrack = ${ontrackVersion}
 
         project.apply plugin: 'org.springframework.boot'
         project.springBoot {
-            layout = 'MODULE'
+            layoutFactory = new ExtensionLayoutFactory()
             customConfiguration = 'moduleDependencies'
         }
 
