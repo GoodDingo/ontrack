@@ -10,8 +10,11 @@ public abstract class AbstractRepositoryTestSupport extends AbstractITTestSuppor
     @Autowired
     protected StructureRepository structureRepository;
 
+    @Autowired
+    protected ProjectRepository projectRepository;
+
     protected Project do_create_project() {
-        return structureRepository.newProject(Project.of(nameDescription()));
+        return projectRepository.newProject(Project.of(nameDescription()));
     }
 
     protected Branch do_create_branch() {

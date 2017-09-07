@@ -7,6 +7,7 @@ import net.nemerosa.ontrack.model.security.PromotionRunCreate
 import net.nemerosa.ontrack.model.security.ValidationRunCreate
 import net.nemerosa.ontrack.model.security.ValidationRunStatusChange
 import net.nemerosa.ontrack.model.structure.*
+import net.nemerosa.ontrack.repository.ProjectRepository
 import net.nemerosa.ontrack.repository.StructureRepository
 import org.junit.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -15,6 +16,9 @@ class ProjectQLIT extends AbstractQLITSupport {
 
     @Autowired
     private StructureRepository structureRepository
+
+    @Autowired
+    private ProjectRepository projectRepository
 
     @Test
     void 'All projects'() {
@@ -546,7 +550,7 @@ class ProjectQLIT extends AbstractQLITSupport {
 
     @Test
     void 'No signature for the project'() {
-        def p = structureRepository.newProject(
+        def p = projectRepository.newProject(
                 Project.of(nameDescription())
                         .withSignature(Signature.of(null, null))
         )

@@ -22,7 +22,7 @@ public class BranchTemplateJdbcRepositoryIT extends AbstractRepositoryTestSuppor
     @Before
     public void create_branch() {
         // Creates a project
-        Project project = structureRepository.newProject(Project.of(nameDescription()));
+        Project project = projectRepository.newProject(Project.of(nameDescription()));
         // Creates a branch for this project
         branch = structureRepository.newBranch(Branch.of(project, nameDescription()));
     }

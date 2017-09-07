@@ -11,20 +11,6 @@ import java.util.function.Predicate;
 
 public interface StructureRepository {
 
-    // Projects
-
-    Project newProject(Project project);
-
-    List<Project> getProjectList();
-
-    Project getProject(ID projectId);
-
-    Optional<Project> getProjectByName(String project);
-
-    void saveProject(Project project);
-
-    Ack deleteProject(ID projectId);
-
     // Branches
 
     Branch getBranch(ID branchId);

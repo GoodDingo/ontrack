@@ -19,6 +19,7 @@ import net.nemerosa.ontrack.model.settings.PredefinedValidationStampService;
 import net.nemerosa.ontrack.model.settings.SecuritySettings;
 import net.nemerosa.ontrack.model.structure.*;
 import net.nemerosa.ontrack.model.support.PropertyServiceHelper;
+import net.nemerosa.ontrack.repository.ProjectRepository;
 import net.nemerosa.ontrack.repository.StructureRepository;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.Validate;
@@ -54,9 +55,10 @@ public class StructureServiceImpl implements StructureService {
     private final PredefinedValidationStampService predefinedValidationStampService;
     private final DecorationService decorationService;
     private final ProjectFavouriteService projectFavouriteService;
+    private final ProjectRepository projectRepository;
 
     @Autowired
-    public StructureServiceImpl(SecurityService securityService, EventPostService eventPostService, EventFactory eventFactory, ValidationRunStatusService validationRunStatusService, StructureRepository structureRepository, ExtensionManager extensionManager, PropertyService propertyService, PredefinedPromotionLevelService predefinedPromotionLevelService, PredefinedValidationStampService predefinedValidationStampService, DecorationService decorationService, ProjectFavouriteService projectFavouriteService) {
+    public StructureServiceImpl(SecurityService securityService, EventPostService eventPostService, EventFactory eventFactory, ValidationRunStatusService validationRunStatusService, StructureRepository structureRepository, ExtensionManager extensionManager, PropertyService propertyService, PredefinedPromotionLevelService predefinedPromotionLevelService, PredefinedValidationStampService predefinedValidationStampService, DecorationService decorationService, ProjectFavouriteService projectFavouriteService, ProjectRepository projectRepository) {
         this.securityService = securityService;
         this.eventPostService = eventPostService;
         this.eventFactory = eventFactory;
@@ -68,6 +70,7 @@ public class StructureServiceImpl implements StructureService {
         this.predefinedValidationStampService = predefinedValidationStampService;
         this.decorationService = decorationService;
         this.projectFavouriteService = projectFavouriteService;
+        this.projectRepository = projectRepository;
     }
 
     @Override
@@ -106,7 +109,7 @@ public class StructureServiceImpl implements StructureService {
     public Project newProject(Project project) {
         isEntityNew(project, "Project must be defined");
         securityService.checkGlobalFunction(ProjectCreation.class);
-        Project newProject = structureRepository.newProject(project.withSignature(securityService.getCurrentSignature()));
+        Project newProject = projectRepository.newProject(project.withSignature(securityService.getCurrentSignature()));
         eventPostService.post(eventFactory.newProject(newProject));
         return newProject;
     }
@@ -114,7 +117,7 @@ public class StructureServiceImpl implements StructureService {
     @Override
     public List<Project> getProjectList() {
         SecuritySettings securitySettings = securityService.getSecuritySettings();
-        List<Project> list = structureRepository.getProjectList();
+        List<Project> list = projectRepository.getProjectList();
         if (securitySettings.isGrantProjectViewToAll() || securityService.isGlobalFunctionGranted(ProjectList.class)) {
             return list;
         } else if (securityService.isLogged()) {
@@ -129,14 +132,14 @@ public class StructureServiceImpl implements StructureService {
     @Override
     public Project getProject(ID projectId) {
         securityService.checkProjectFunction(projectId.getValue(), ProjectView.class);
-        return structureRepository.getProject(projectId);
+        return projectRepository.getProject(projectId);
     }
 
     @Override
     public void saveProject(Project project) {
         isEntityDefined(project, "Project must be defined");
         securityService.checkProjectFunction(project.id(), ProjectEdit.class);
-        structureRepository.saveProject(project);
+        projectRepository.saveProject(project);
         eventPostService.post(eventFactory.updateProject(project));
     }
 
@@ -145,7 +148,7 @@ public class StructureServiceImpl implements StructureService {
         Validate.isTrue(projectId.isSet(), "Project ID must be set");
         securityService.checkProjectFunction(projectId.getValue(), ProjectDelete.class);
         eventPostService.post(eventFactory.deleteProject(getProject(projectId)));
-        return structureRepository.deleteProject(projectId);
+        return projectRepository.deleteProject(projectId);
     }
 
     @Override
@@ -1132,7 +1135,8 @@ public class StructureServiceImpl implements StructureService {
 
     @Override
     public Optional<Project> findProjectByName(String project) {
-        return structureRepository.getProjectByName(project)
+        return Optional
+                .ofNullable(projectRepository.getProjectByName(project))
                 .filter(p ->
                         securityService.isGlobalFunctionGranted(ProjectList.class) ||
                                 securityService.isProjectFunctionGranted(p.id(), ProjectView.class));

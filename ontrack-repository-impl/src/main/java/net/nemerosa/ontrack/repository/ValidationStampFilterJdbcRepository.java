@@ -29,11 +29,13 @@ import java.util.function.Function;
 public class ValidationStampFilterJdbcRepository extends AbstractJdbcRepository implements ValidationStampFilterRepository {
 
     private final StructureRepository structureRepository;
+    private final ProjectRepository projectRepository;
 
     @Autowired
-    public ValidationStampFilterJdbcRepository(DataSource dataSource, StructureRepository structureRepository) {
+    public ValidationStampFilterJdbcRepository(DataSource dataSource, StructureRepository structureRepository, ProjectRepository projectRepository) {
         super(dataSource);
         this.structureRepository = structureRepository;
+        this.projectRepository = projectRepository;
     }
 
     @Override
@@ -179,7 +181,7 @@ public class ValidationStampFilterJdbcRepository extends AbstractJdbcRepository 
                     params("id", filterId.getValue()),
                     (rs, rowNum) -> toValidationStampFilter(
                             rs,
-                            pid -> pid != null ? structureRepository.getProject(ID.of(pid)) : null,
+                            pid -> pid != null ? projectRepository.getProject(ID.of(pid)) : null,
                             bid -> bid != null ? structureRepository.getBranch(ID.of(bid)) : null
                     )
             );

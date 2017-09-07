@@ -79,21 +79,4 @@ public class StructureJdbcRepositoryIT extends AbstractRepositoryTestSupport {
         assertTrue("Project ID is defined", ID.isDefined(p.getId()));
     }
 
-    @Test
-    public void create_project_with_null_description() {
-        Project p = structureRepository.newProject(Project.of(NameDescription.nd(uid("P"), null)));
-        assertNotNull("Project is defined", p);
-        assertNull(p.getDescription());
-        assertTrue("Project ID is defined", ID.isDefined(p.getId()));
-    }
-
-    @Test
-    public void save_project_disabled() {
-        Project p = do_create_project();
-        p = p.withDisabled(true);
-        structureRepository.saveProject(p);
-        p = structureRepository.getProject(p.getId());
-        assertTrue("Project must be disabled", p.isDisabled());
-    }
-
 }

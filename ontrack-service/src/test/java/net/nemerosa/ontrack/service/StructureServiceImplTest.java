@@ -7,6 +7,7 @@ import net.nemerosa.ontrack.model.security.SecurityService;
 import net.nemerosa.ontrack.model.settings.PredefinedPromotionLevelService;
 import net.nemerosa.ontrack.model.settings.PredefinedValidationStampService;
 import net.nemerosa.ontrack.model.structure.*;
+import net.nemerosa.ontrack.repository.ProjectRepository;
 import net.nemerosa.ontrack.repository.StructureRepository;
 import org.junit.Before;
 import org.junit.Test;
@@ -22,6 +23,7 @@ public class StructureServiceImplTest {
 
     private StructureServiceImpl service;
     private StructureRepository structureRepository;
+    private ProjectRepository projectRepository;
     private PromotionLevel copper;
     private Build build;
 
@@ -30,6 +32,7 @@ public class StructureServiceImplTest {
         SecurityService securityService = mock(SecurityService.class);
         ValidationRunStatusService validationRunStatusService = mock(ValidationRunStatusService.class);
         structureRepository = mock(StructureRepository.class);
+        projectRepository = mock(ProjectRepository.class);
         EventPostService eventService = mock(EventPostService.class);
         EventFactory eventFactory = mock(EventFactory.class);
         ExtensionManager extensionManager = mock(ExtensionManager.class);
@@ -49,7 +52,9 @@ public class StructureServiceImplTest {
                 predefinedPromotionLevelService,
                 predefinedValidationStampService,
                 decorationService,
-                projectFavouriteService);
+                projectFavouriteService,
+                projectRepository
+        );
         // Model
         Project project = Project.of(nd("P", "Project")).withId(ID.of(1));
         Branch branch = Branch.of(project, nd("B", "Branch")).withId(ID.of(1));

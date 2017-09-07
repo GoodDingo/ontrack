@@ -24,83 +24,13 @@ import java.util.stream.Collectors;
 public class StructureJdbcRepository extends AbstractJdbcRepository implements StructureRepository {
 
     private final BranchTemplateRepository branchTemplateRepository;
+    private final ProjectRepository projectRepository;
 
     @Autowired
-    public StructureJdbcRepository(DataSource dataSource, BranchTemplateRepository branchTemplateRepository) {
+    public StructureJdbcRepository(DataSource dataSource, BranchTemplateRepository branchTemplateRepository, ProjectRepository projectRepository) {
         super(dataSource);
         this.branchTemplateRepository = branchTemplateRepository;
-    }
-
-    @Override
-    public Project newProject(Project project) {
-        // Creation
-        try {
-            int id = dbCreate(
-                    "INSERT INTO PROJECTS(NAME, DESCRIPTION, DISABLED, CREATION, CREATOR) VALUES (:name, :description, :disabled, :creation, :creator)",
-                    params("name", project.getName())
-                            .addValue("description", project.getDescription())
-                            .addValue("disabled", project.isDisabled())
-                            .addValue("creation", dateTimeForDB(project.getSignature().getTime()))
-                            .addValue("creator", project.getSignature().getUser().getName())
-            );
-            // Returns with ID
-            return project.withId(id(id));
-        } catch (DuplicateKeyException ex) {
-            throw new ProjectNameAlreadyDefinedException(project.getName());
-        }
-    }
-
-    @Override
-    public List<Project> getProjectList() {
-        return getJdbcTemplate().query(
-                "SELECT * FROM PROJECTS ORDER BY NAME",
-                (rs, rowNum) -> toProject(rs)
-        );
-    }
-
-    @Override
-    public Project getProject(ID projectId) {
-        try {
-            return getNamedParameterJdbcTemplate().queryForObject(
-                    "SELECT * FROM PROJECTS WHERE ID = :id",
-                    params("id", projectId.getValue()),
-                    (rs, rowNum) -> toProject(rs)
-            );
-        } catch (EmptyResultDataAccessException ex) {
-            throw new ProjectNotFoundException(projectId);
-        }
-    }
-
-    @Override
-    public Optional<Project> getProjectByName(String project) {
-        return Optional.ofNullable(
-                getFirstItem(
-                        "SELECT * FROM PROJECTS WHERE NAME = :name",
-                        params("name", project),
-                        (rs, rowNum) -> toProject(rs)
-                )
-        );
-    }
-
-    @Override
-    public void saveProject(Project project) {
-        getNamedParameterJdbcTemplate().update(
-                "UPDATE PROJECTS SET NAME = :name, DESCRIPTION = :description, DISABLED = :disabled WHERE ID = :id",
-                params("name", project.getName())
-                        .addValue("description", project.getDescription())
-                        .addValue("disabled", project.isDisabled())
-                        .addValue("id", project.getId().getValue())
-        );
-    }
-
-    @Override
-    public Ack deleteProject(ID projectId) {
-        return Ack.one(
-                getNamedParameterJdbcTemplate().update(
-                        "DELETE FROM PROJECTS WHERE ID = :id",
-                        params("id", projectId.getValue())
-                )
-        );
+        this.projectRepository = projectRepository;
     }
 
     @Override
@@ -109,7 +39,7 @@ public class StructureJdbcRepository extends AbstractJdbcRepository implements S
             return getNamedParameterJdbcTemplate().queryForObject(
                     "SELECT * FROM BRANCHES WHERE ID = :id",
                     params("id", branchId.getValue()),
-                    (rs, rowNum) -> toBranch(rs, this::getProject)
+                    (rs, rowNum) -> toBranch(rs, projectRepository::getProject)
             );
         } catch (EmptyResultDataAccessException ex) {
             throw new BranchNotFoundException(branchId);
@@ -118,7 +48,8 @@ public class StructureJdbcRepository extends AbstractJdbcRepository implements S
 
     @Override
     public Optional<Branch> getBranchByName(String project, String branch) {
-        return getProjectByName(project)
+        return Optional
+                .ofNullable(projectRepository.getProjectByName(project))
                 .map(p -> getFirstItem(
                         "SELECT * FROM BRANCHES WHERE PROJECTID = :project AND NAME = :name",
                         params("name", branch).addValue("project", p.id()),
@@ -128,7 +59,7 @@ public class StructureJdbcRepository extends AbstractJdbcRepository implements S
 
     @Override
     public List<Branch> getBranchesForProject(ID projectId) {
-        Project project = getProject(projectId);
+        Project project = projectRepository.getProject(projectId);
         return getNamedParameterJdbcTemplate().query(
                 "SELECT * FROM BRANCHES WHERE PROJECTID = :projectId ORDER BY ID DESC",
                 params("projectId", projectId.getValue()),
@@ -1032,16 +963,6 @@ public class StructureJdbcRepository extends AbstractJdbcRepository implements S
         } else {
             return BranchType.CLASSIC;
         }
-    }
-
-    protected Project toProject(ResultSet rs) throws SQLException {
-        return Project.of(new NameDescription(
-                rs.getString("name"),
-                rs.getString("description")
-        ))
-                .withId(id(rs.getInt("id")))
-                .withSignature(readSignature(rs))
-                .withDisabled(rs.getBoolean("disabled"));
     }
 
 }
