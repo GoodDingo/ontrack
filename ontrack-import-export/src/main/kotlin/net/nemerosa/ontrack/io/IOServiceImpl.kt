@@ -28,17 +28,13 @@ constructor(
 ) : IOService, AbstractJdbcRepository(dataSource) {
 
     override fun exportData(io: IOImportProperties, outputStream: OutputStream) {
-        // Checking rights
-        if (securityService.currentAccount?.role != SecurityRole.ADMINISTRATOR) {
-            throw AccessDeniedException("Export only allowed for administrators.")
-        }
         // Unique ID for this export
         val uuid = UUID.randomUUID().toString()
         // Creates a working directory
         val workingDir = envService.getWorkingDir("io", uuid)
         try {
             // Export in files
-            export(workingDir, "CONFIGURATIONS", "ID", "TYPE", "NAME", "CONTENT")
+            export(workingDir)
             // Zips all files
             val bout = BufferedOutputStream(outputStream)
             try {
@@ -56,6 +52,21 @@ constructor(
         } finally {
             FileUtils.forceDelete(workingDir)
         }
+    }
+
+    override fun export(workingDir: File) {
+        // Checking rights
+        if (securityService.currentAccount?.role != SecurityRole.ADMINISTRATOR) {
+            throw AccessDeniedException("Export only allowed for administrators.")
+        }
+        /**
+         * Global data
+         */
+        export(workingDir, "CONFIGURATIONS", "ID", "TYPE", "NAME", "CONTENT")
+        export(workingDir, "SETTINGS", "CATEGORY", "NAME", "VALUE")
+        export(workingDir, "PREDEFINED_PROMOTION_LEVELS", "ID", "ORDERNB", "NAME", "DESCRIPTION", "IMAGETYPE", "IMAGEBYTES");
+        export(workingDir, "PREDEFINED_VALIDATION_STAMPS", "ID", "NAME", "DESCRIPTION", "IMAGETYPE", "IMAGEBYTES");
+        export(workingDir, "STORAGE", "STORE", "NAME", "DATA");
     }
 
     private fun export(workingDir: File, table: String, vararg columns: String) {
